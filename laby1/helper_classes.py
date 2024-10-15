@@ -29,7 +29,9 @@ class Polygon:
         self.vertices.append(Vertex(x, y))
 
     def remove_vertex(self, index):
+        print(f"Removing vertex at index {index}")
         if 0 <= index < len(self.vertices):
+            print(f"Removing vertex at index {index}")
             del self.vertices[index]
             # Remove associated constraints and bezier segments
             if index in self.constraints:
@@ -37,9 +39,25 @@ class Polygon:
             if index in self.bezier_segments:
                 del self.bezier_segments[index]
 
-    def insert_vertex(self, index, x, y):
-        if 0 <= index < len(self.vertices):
-            self.vertices.insert(index + 1, Vertex(x, y))
+    def insert_vertex(self, edge_index, x, y):
+        """Insert a vertex at the specified edge."""
+        # Insert the new vertex after the start vertex of the edge
+        self.insert_vertex_at_position(edge_index + 1, x, y)
+
+        # Shift constraints and bezier segments for subsequent edges
+        if edge_index in self.constraints:
+            # Constraints on the original edge are removed in MainWindow
+            pass  # Already handled
+        if edge_index in self.bezier_segments:
+            # Transfer the bezier segment to the new edge
+            bezier = self.bezier_segments.pop(edge_index)
+            new_edge_index = edge_index + 1
+            self.bezier_segments[new_edge_index] = bezier
+
+    def insert_vertex_at_position(self, index, x, y):
+        """Insert a vertex at the specified list index."""
+        if 0 <= index <= len(self.vertices):
+            self.vertices.insert(index, Vertex(x, y))
 
     def get_edges(self):
         edges = []
@@ -49,4 +67,5 @@ class Polygon:
             end = self.vertices[(i + 1) % n].point
             edges.append((start, end))
         return edges
+
 

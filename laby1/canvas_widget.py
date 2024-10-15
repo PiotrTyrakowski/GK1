@@ -13,6 +13,7 @@ from helper_classes import Polygon, Constraint, BezierSegment, Vertex
 
 class Canvas(QWidget):
     edge_clicked = pyqtSignal(int, QPoint)  # New signal
+    vertex_clicked = pyqtSignal(int, QPoint)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -170,12 +171,23 @@ class Canvas(QWidget):
         pos = event.pos()
         if event.button() == Qt.LeftButton:
             clicked_edge = self.get_clicked_edge(pos)
+            clicked_vertex = self.get_clicked_vertex(pos)
 
-            for i, vertex in enumerate(self.polygon.vertices):
-                if self.distance(pos, vertex.point) < 10:
-                    self.selected_vertex = i
-                    self.dragging = True
-                    return
+            print(f"Clicked edgehe: {clicked_edge}")
+            print(f"Clicked vertexhe: {clicked_vertex}")
+
+
+            # for i, vertex in enumerate(self.polygon.vertices):
+            #     if self.distance(pos, vertex.point) < 10:
+            #         self.selected_vertex = i
+            #         self.dragging = True
+                  
+                
+            if clicked_vertex is not None:
+                print(f"Clicked vertex: {clicked_vertex}")
+                self.vertex_clicked.emit(clicked_vertex, pos)
+                self.selected_vertex = clicked_vertex
+                self.dragging = True
             #
             if clicked_edge is not None:
                 print(f"Clicked edge: {clicked_edge}")
@@ -247,6 +259,13 @@ class Canvas(QWidget):
         edges = self.polygon.get_edges()
         for i, (start, end) in enumerate(edges):
             if self.is_near_edge(pos, start, end):
+                return i
+        return None
+    
+    def get_clicked_vertex(self, pos):
+        for i, vertex in enumerate(self.polygon.vertices):
+            if self.distance(pos, vertex.point) < 10:
+                print("something")
                 return i
         return None
 
