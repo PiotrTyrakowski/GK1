@@ -168,44 +168,42 @@ class Canvas(QWidget):
         return points
 
     def mousePressEvent(self, event: QMouseEvent):
+
         pos = event.pos()
         if event.button() == Qt.LeftButton:
+            flag = False
             clicked_edge = self.get_clicked_edge(pos)
             clicked_vertex = self.get_clicked_vertex(pos)
 
-            print(f"Clicked edgehe: {clicked_edge}")
-            print(f"Clicked vertexhe: {clicked_vertex}")
+            print(f"Clicked edge: {clicked_edge}")
+            print(f"Clicked vertex: {clicked_vertex}")
 
-
-            # for i, vertex in enumerate(self.polygon.vertices):
-            #     if self.distance(pos, vertex.point) < 10:
-            #         self.selected_vertex = i
-            #         self.dragging = True
-                  
-                
             if clicked_vertex is not None:
                 print(f"Clicked vertex: {clicked_vertex}")
                 self.vertex_clicked.emit(clicked_vertex, pos)
                 self.selected_vertex = clicked_vertex
                 self.dragging = True
-            #
+                flag = True
             if clicked_edge is not None:
                 print(f"Clicked edge: {clicked_edge}")
                 # Emit signal with edge index and click position
                 self.edge_clicked.emit(clicked_edge, pos)
-                return
+                flag = True
             
             # Check if a control point is clicked
             for bezier in self.polygon.bezier_segments.values():
                 if self.distance(pos, bezier.control1) < 5:
                     self.selected_control = ('control1', bezier)
                     self.dragging_control = True
-                    return
-                if self.distance(pos, bezier.control2) < 5:
+                    flag = True
+                elif self.distance(pos, bezier.control2) < 5:
                     self.selected_control = ('control2', bezier)
                     self.dragging_control = True
-                    return
+                    flag = True
             # Else, start dragging the whole polygon
+
+            if flag:
+                return 
             self.selected_vertex = 'polygon'
             self.dragging = True
             self.last_mouse_pos = pos
@@ -282,4 +280,3 @@ class Canvas(QWidget):
             return False
         distance = numerator / denominator
         return distance <= self.edge_threshold
-

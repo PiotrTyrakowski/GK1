@@ -10,6 +10,7 @@ class Constraint:
 class Vertex:
     def __init__(self, x, y):
         self.point = QPoint(x, y)
+        self.continuity = None  # New Attribute: 'G0', 'G1', 'C1'
 
 class BezierSegment:
     def __init__(self, start_vertex, end_vertex, control1, control2, continuity='G0'):
@@ -38,6 +39,10 @@ class Polygon:
                 del self.constraints[index]
             if index in self.bezier_segments:
                 del self.bezier_segments[index]
+            # Handle continuity constraints
+            for v in self.vertices:
+                if hasattr(v, 'continuity'):
+                    v.continuity = None
 
     def insert_vertex(self, edge_index, x, y):
         """Insert a vertex at the specified edge."""
