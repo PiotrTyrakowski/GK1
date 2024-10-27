@@ -17,7 +17,9 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Edytor Wielokątów/Krzywoliniowych")
-        self.canvas = Canvas(self)
+        # Set initial window size
+        self.setGeometry(100, 100, 1200, 800)  # x, y, width, height
+        self.canvas = Canvas(self)  # This creates an instance of the Canvas class, passing the current MainWindow instance as the parent. This allows the Canvas to be displayed within the MainWindow and enables communication between the two components.
         self.init_ui()
         self.canvas.edge_clicked.connect(self.on_edge_clicked)  # Connect the signal
         self.canvas.vertex_clicked.connect(self.on_vertex_clicked)
@@ -92,7 +94,7 @@ class MainWindow(QMainWindow):
         controls.addWidget(add_vertex_continuity_btn)
 
         # Radio Buttons for Line Drawing
-        controls.addWidget(QLabel("Algorytm rysowania linii:"))
+        controls.addWidget(QLabel("Algorytm ry/sowania linii:"))
         self.radio_bresenham = QRadioButton("Bresenham")
         self.radio_library = QRadioButton("Biblioteczny")
         self.radio_library.setChecked(True)
@@ -207,6 +209,17 @@ class MainWindow(QMainWindow):
 
     def on_vertex_clicked(self, vertex_index, pos):
         if self.adding_vertex_continuity_mode:
+            
+            flag = False
+            for segments in self.canvas.polygon.bezier_segments.values():
+                if segments.start_vertex == vertex_index or segments.end_vertex == vertex_index:
+                    flag = True
+                    break
+            
+            if flag is False:
+                return
+            
+            
             self.add_vertex_continuity(vertex_index)
             self.adding_vertex_continuity_mode = False
             # Uncheck the add vertex continuity button
@@ -231,10 +244,6 @@ class MainWindow(QMainWindow):
 
         # Insert the new vertex into the polygon
         self.canvas.polygon.insert_vertex(edge_index, x, y)
-
-        # Remove constraints from the original edge
-        if edge_index in self.canvas.polygon.constraints:
-            del self.canvas.polygon.constraints[edge_index]
 
         # Update the canvas
         self.canvas.update()
@@ -359,7 +368,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Info", "Krawędź już ma krzywą Béziera.")
             return
 
-        print("dsasdadsaf")
+        
         # Add a default Bezier segment
         start = self.canvas.polygon.vertices[edge_index].point
         end = self.canvas.polygon.vertices[(edge_index + 1) % len(self.canvas.polygon.vertices)].point
@@ -390,8 +399,10 @@ class MainWindow(QMainWindow):
                                                        "Typ ciągłości:", options, 0, False)
         if ok and selected_continuity:
             # Assign continuity to the vertex
-            self.canvas.polygon.vertices[vertex_index].continuity = selected_continuity
+            self.canvas.polygon.add_vertex_continuity(vertex_index, selected_continuity)
+            # self.canvas.polygon.vertices[vertex_index].continuity = selected_continuity
             self.canvas.update()
+
 
 
 # ----- Main Execution -----

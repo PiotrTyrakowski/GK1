@@ -35,6 +35,7 @@ class Canvas(QWidget):
         self.polygon.add_vertex(300, 100)
         self.polygon.add_vertex(300, 300)
         self.polygon.add_vertex(100, 300)
+        
         # Add a Bezier segment on the first edge
         start = self.polygon.vertices[0].point
         end = self.polygon.vertices[1].point
@@ -44,14 +45,16 @@ class Canvas(QWidget):
             start_vertex=0,
             end_vertex=1,
             control1=control1,
-            control2=control2,
-            continuity='G0'
+            control2=control2
         )
         self.polygon.bezier_segments[0] = bezier
+        
         # Add some constraints
         self.polygon.constraints[1] = Constraint('horizontal')
         self.polygon.constraints[2] = Constraint('length', 200)
-        # Additional constraints can be added here
+        
+        # Set some example continuity
+        self.polygon.vertices[1].continuity = 'G1'  # Example continuity at vertex 1
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -64,9 +67,11 @@ class Canvas(QWidget):
             if i in self.polygon.constraints:
                 pen.setColor(Qt.red)
             if i == self.selected_edge_index:
-                pen.setColor(Qt.blue)  # Highlight selected edge
+                pen.setColor(Qt.blue)
                 pen.setWidth(3)
             painter.setPen(pen)
+
+            # Draw the edge (either as Bezier or straight line)
             if i in self.polygon.bezier_segments:
                 bezier = self.polygon.bezier_segments[i]
                 self.draw_bezier(painter, bezier)
@@ -75,34 +80,86 @@ class Canvas(QWidget):
                     self.draw_bresenham(painter, start, end)
                 else:
                     painter.drawLine(start, end)
-            # Draw constraint icons
+
+            # Draw constraint labels
             if i in self.polygon.constraints:
                 constraint = self.polygon.constraints[i]
-                icon_color = Qt.blue
-                painter.setBrush(QBrush(icon_color))
-                painter.setPen(Qt.NoPen)
                 mid_x = (start.x() + end.x()) // 2
                 mid_y = (start.y() + end.y()) // 2
+                
+                # Draw constraint icon
+                painter.setBrush(QBrush(Qt.blue))
+                painter.setPen(Qt.NoPen)
                 painter.drawEllipse(QPoint(mid_x, mid_y), 5, 5)
+                
+                # Draw constraint text
+                painter.setPen(QPen(Qt.blue))
+                constraint_text = f"{constraint.type}"
+                if constraint.type == 'length':
+                    constraint_text += f"={constraint.value}"
+                painter.drawText(mid_x + 10, mid_y, constraint_text)
 
-        # Draw vertices
-        for vertex in self.polygon.vertices:
+        # Draw vertices with enhanced continuity information
+        for i, vertex in enumerate(self.polygon.vertices):
+            # Draw vertex circle
             painter.setBrush(QBrush(Qt.green))
             painter.setPen(QPen(Qt.black, 1))
             painter.drawEllipse(vertex.point, 5, 5)
+            
+            # Draw vertex index and continuity information
+            if vertex.continuity != 'G0':
+                # Draw background for better readability
+                text = f"V{i}({vertex.continuity})"
+                painter.setPen(QPen(Qt.white))
+                painter.setBrush(QBrush(Qt.darkGreen))
+                text_rect = painter.boundingRect(
+                    vertex.point.x() - 15,
+                    vertex.point.y() - 25,
+                    50, 20,
+                    Qt.AlignLeft,
+                    text
+                )
+                text_rect.adjust(-2, -2, 2, 2)
+                painter.drawRect(text_rect)
+                
+                # Draw text
+                painter.setPen(QPen(Qt.white))
+                painter.drawText(
+                    vertex.point.x() - 15,
+                    vertex.point.y() - 25,
+                    50, 20,
+                    Qt.AlignLeft,
+                    text
+                )
+            else:
+                # Just draw vertex index for G0 vertices
+                painter.setPen(QPen(Qt.black))
+                painter.drawText(
+                    vertex.point.x() - 15,
+                    vertex.point.y() - 10,
+                    f"V{i}"
+                )
 
-        # Draw control points for Bezier
-        for bezier in self.polygon.bezier_segments.values():
+        # Draw control points for Bezier curves
+        for edge_idx, bezier in self.polygon.bezier_segments.items():
             painter.setBrush(QBrush(Qt.blue))
             painter.setPen(QPen(Qt.black, 1))
+            
+            # Draw control points
             painter.drawEllipse(bezier.control1, 3, 3)
             painter.drawEllipse(bezier.control2, 3, 3)
-            # Correctly retrieve the start and end vertices
+            
+            # Draw control lines
             start_vertex = self.polygon.vertices[bezier.start_vertex].point
             end_vertex = self.polygon.vertices[bezier.end_vertex].point
-            # Optionally draw lines connecting control points to vertices
+            painter.setPen(QPen(Qt.gray, 1, Qt.DashLine))
             painter.drawLine(start_vertex, bezier.control1)
             painter.drawLine(end_vertex, bezier.control2)
+            
+            # Draw Bezier curve index
+            mid_point = self.calculate_bezier_point(bezier, 0.5)
+            painter.setPen(QPen(Qt.darkMagenta))
+            painter.drawText(mid_point[0], mid_point[1], f"B{edge_idx}")
 
     def draw_bresenham(self, painter, start, end):
         # Implement Bresenham's line algorithm
@@ -166,6 +223,19 @@ class Canvas(QWidget):
             point = (1-t)**3 * P0 + 3*(1-t)**2 * t * P1 + 3*(1-t)*t**2 * P2 + t**3 * P3
             points.append(tuple(point.astype(int)))
         return points
+
+    def calculate_bezier_point(self, bezier, t):
+        """Calculate a single point on the Bezier curve at parameter t."""
+        start_vertex = self.polygon.vertices[bezier.start_vertex].point
+        end_vertex = self.polygon.vertices[bezier.end_vertex].point
+        
+        P0 = np.array([start_vertex.x(), start_vertex.y()])
+        P1 = np.array([bezier.control1.x(), bezier.control1.y()])
+        P2 = np.array([bezier.control2.x(), bezier.control2.y()])
+        P3 = np.array([end_vertex.x(), end_vertex.y()])
+        
+        point = (1-t)**3 * P0 + 3*(1-t)**2 * t * P1 + 3*(1-t)*t**2 * P2 + t**3 * P3
+        return tuple(point.astype(int))
 
     def mousePressEvent(self, event: QMouseEvent):
 
@@ -236,12 +306,38 @@ class Canvas(QWidget):
                 bezier.control2 += delta
             self.last_mouse_pos = pos
             self.update()
+
+        # we find bezier segment and manipuate it via control
         if self.dragging_control and self.selected_control:
             control_name, bezier = self.selected_control
+            start_vertex = bezier.start_vertex
+            end_vertex = bezier.end_vertex
+            before_start_vertex = (bezier.start_vertex - 1) % self.polygon.length
+            after_end_vertex = (bezier.end_vertex + 1) % self.polygon.length
+            before_bezier = None
+            after_bezier = None
+
+            for bez in self.polygon.bezier_segments.values():
+                if bez.start_vertex == before_start_vertex and bez.end_vertex == start_vertex:
+                    before_bezier = bez
+                elif bez.start_vertex == end_vertex and bez.end_vertex == after_end_vertex:
+                    after_bezier = bez
+
+
             if control_name == 'control1':
+                if before_bezier is None:
+                    start_vertex
+                    print(12345)
+                else:
+                    print(678)
+
+                
+
                 bezier.control1 = pos
             elif control_name == 'control2':
-                bezier.control2 = pos
+                if after_bezier is None:
+
+                    bezier.control2 = pos
             self.update()
 
     def mouseReleaseEvent(self, event: QMouseEvent):
@@ -280,3 +376,4 @@ class Canvas(QWidget):
             return False
         distance = numerator / denominator
         return distance <= self.edge_threshold
+
